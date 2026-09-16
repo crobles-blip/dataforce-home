@@ -284,6 +284,35 @@ main { display:flex; flex-direction:column; align-items:center; justify-content:
         <div class="card-arrow"><svg viewBox="0 0 10 10" fill="none" stroke="#b91c1c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5"/></svg></div>
       </a>
 
+      <a class="card card-market-data" href="https://dataforce.gsaforce.com/market-data/">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="20" x2="4" y2="12"/>
+            <line x1="10" y1="20" x2="10" y2="7"/>
+            <line x1="16" y1="20" x2="16" y2="4"/>
+            <line x1="4" y1="20" x2="20" y2="20"/>
+          </svg>
+        </div>
+        <div><div class="card-name">Market Data</div><div class="card-desc">Sales report and market rates dashboard</div></div>
+        <div class="card-arrow"><svg viewBox="0 0 10 10" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5"/></svg></div>
+      </a>
+      <script>
+      (function () {
+        var card = document.currentScript.previousElementSibling;
+        if (!card || !card.classList.contains('card-market-data')) return;
+        card.addEventListener('click', function (e) {
+          try {
+            var raw = localStorage.getItem('df_user') || sessionStorage.getItem('df_user');
+            var user = raw ? JSON.parse(raw) : null;
+            if (user && user.email) {
+              e.preventDefault();
+              window.location.href = 'https://dataforce-marketdata-git-911713216717.us-east1.run.app/?email=' + encodeURIComponent(user.email);
+            }
+          } catch (err) { /* si algo falla, sigue con el link normal de respaldo (arriba) */ }
+        });
+      })();
+      </script>
+
       <a class="card card-upload" href="https://dataforce.gsaforce.com/upload-data/">
         <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#6d3fc7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
         <div><div class="card-name">Upload Data</div><div class="card-desc">Manual data upload and database refresh tools</div></div>
@@ -302,33 +331,7 @@ main { display:flex; flex-direction:column; align-items:center; justify-content:
         <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#1a56db" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
         <div><div class="card-name">Users</div><div class="card-desc">Manage user access, roles and permissions</div></div>
         <div class="card-arrow"><svg viewBox="0 0 10 10" fill="none" stroke="#1a56db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5"/></svg></div>
-      </a>
-
-      <a class="card card-market-data" href="https://dataforce.gsaforce.com/market-data/">
-        <div class="card-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="4" y1="20" x2="4" y2="12"/>
-            <line x1="10" y1="20" x2="10" y2="7"/>
-            <line x1="16" y1="20" x2="16" y2="4"/>
-            <line x1="4" y1="20" x2="20" y2="20"/>
-          </svg>
-        </div>
-        <div><div class="card-name">Market Data</div><div class="card-desc">Sales report and market rates dashboard</div></div>
-        <div class="card-arrow"><svg viewBox="0 0 10 10" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5"/></svg></div>
-      </a>
-      <script>
-      (function () {
-        var card = document.currentScript.previousElementSibling;
-        if (!card || !card.classList.contains('card-market-data')) return;
-        try {
-          var raw = localStorage.getItem('df_user') || sessionStorage.getItem('df_user');
-          var user = raw ? JSON.parse(raw) : null;
-          if (user && user.email) {
-            card.href = 'https://dataforce-marketdata-git-911713216717.us-east1.run.app/?email=' + encodeURIComponent(user.email);
-          }
-        } catch (e) { /* si algo falla, el cuadrado queda con el href de respaldo de arriba */ }
-      })();
-      </script>    
+      </a> 
 </div>
     <div class="hub-footer"><span></span>DATAFORCE · GSA Cargo Intelligence Platform<span></span></div>
   </main>
