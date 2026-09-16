@@ -299,6 +299,25 @@
   </div>
 </div>
 
+<!-- Pantalla en blanco (sin login, sin formulario) mientras se resuelve el
+     inicio de sesión automático que llega desde el cuadrado "Market Data"
+     de Dataforce (?email=...). El script de abajo la activa de forma
+     síncrona, antes de que el navegador llegue a pintar #loginScreen, para
+     que no se vea ni un instante el formulario de login/hint al entrar
+     desde ahí. Si el auto-login falla, tryEnterFromDataforce() la oculta y
+     vuelve a mostrar #loginScreen con el motivo del error. -->
+<div id="ssoRedirectScreen" style="display:none; min-height:100vh; align-items:center; justify-content:center; background:var(--navy); padding:16px;"></div>
+<script>
+  (function(){
+    try {
+      if (new URLSearchParams(window.location.search).get('email')) {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('ssoRedirectScreen').style.display = 'flex';
+      }
+    } catch (e) {}
+  })();
+</script>
+
 <div id="app">
   <header>
     <div class="headrow">
@@ -465,11 +484,12 @@ function makeTabFilters(){
     // airports"), reemplaza al <select> de uno solo que era 'origenAeropuerto'.
     origenPais: "Todos", origenAeropuertos: [], origenAeropuertoDropdownOpen: false,
     paisSortMode: "abc", airportOptionsForFilter: [], clientOptionsForFilter: [], airportDropdownOpen: false,
-    // destinos por "Zona GSA Force" (zonaGsaForce, funciona como origenPais:
-    // "Todos" = sin filtrar) y, solo en las fuentes con aerolínea
-    // confirmada (ver dest_airline_flag_column en /api/data-sources),
-    // limitar a "solo destinos relevantes" para esa aerolínea.
-    zonaGsaForce: "Todos", soloDestinosRelevantes: false,
+    // "Destinos <aerolínea>" (aerolineaDestino, funciona como origenPais:
+    // "Todos" = sin filtrar; si no, un código de _AIRLINE_FLAG_COLS —
+    // CX/LA/ET/LY/B6/M7 — ver /api/aerolineas-destino y filter_df en
+    // data_helpers.py). Reemplaza al filtro anterior "Zona GSA Force"/
+    // "solo destinos relevantes".
+    aerolineaDestino: "Todos",
   };
 }
 
@@ -569,7 +589,7 @@ const state = {
   comparativoCustom: { aFrom: "", aTo: "", bFrom: "", bTo: "" }, comparativoTrendA: [], comparativoTrendB: [],
   globalPeriod: "ytd", globalCountries: [], globalViewMode: "valores", globalMetric: "toneladas", // idem
   origenPaisOptions: [], origenAeropuertoOptions: [],
-  zonaGsaForceOptions: [], 
+  aerolineasDestinoOptions: [], reporteCountryOptions: [],
   clienteViewList: [], clienteViewSelected: "", clienteViewDestinos: [], clienteViewPeriodo: "ytd",
   clienteViewDateFrom: "", clienteViewDateTo: "",
   clienteViewData: null, clienteViewDestinos: [], clienteViewLoading: false,
@@ -729,14 +749,14 @@ async function withRetry(fn, { retries = 3, delayMs = 1500 } = {}){
   throw lastErr;
 }
 
-// ya no es la entrada normal — Panel de Ventas se abre desde el cuadrado
-// "Market Data" de Dataforce (ver tryEnterFromDataforce). El formulario
-// con contraseña queda oculto por defecto y solo aparece si alguien hace
-// clic en "sign in with username/password instead" — sirve como respaldo
-// para un admin (por ejemplo para entrar la primera vez y crear su propio
-// usuario en la pestaña Permisos). El listado de "Test users" con
-// contraseñas reales se sacó de la pantalla: no debe quedar expuesto en
-// producción.
+// El login con usuario/contraseña ya no es la entrada normal — Panel de
+// Ventas se abre desde el cuadrado "Market Data" de Dataforce (ver
+// tryEnterFromDataforce). El formulario con contraseña queda oculto por
+// defecto y solo aparece si alguien hace clic en "sign in with
+// username/password instead" — sirve como respaldo para un admin (por
+// ejemplo para entrar la primera vez y crear su propio usuario en la
+// pestaña Permisos). El listado de "Test users" con contraseñas reales se
+// sacó de la pantalla: no debe quedar expuesto en producción.
 document.getElementById('togglePasswordLogin').addEventListener('click', () => {
   document.getElementById('loginPasswordFallback').style.display = 'block';
   document.getElementById('loginRedirectHint').style.display = 'none';
@@ -818,19 +838,17 @@ function isCeo(){ return state.user && state.user.rol === 'ceo'; }
 // (ver require_task_assigner en main.py, que es el equivalente backend).
 function isManager(){ return state.user && state.user.rol === 'manager'; }
 function isCompliance(){ return isAdmin() || isCeo() || (state.user && state.user.puede_gestionar_cumplimiento); }
-// tareas ni nada, ellos reciben las instrucciones solamente" — el backend
-// ya rechaza POST /api/tasks para un vendedor (ver require_task_assigner en
-// main.py), pero el frontend seguía mostrando el botón "+ Add task" por
-// todos lados (Sales Report, alertas, oportunidades, Compliance) incluso a
-// un vendedor, que al hacer clic solo se encontraba con un error 403 sin
-// entender por qué. Un vendedor con acceso a Compliance
-// (puede_gestionar_cumplimiento) tampoco debe poder asignar desde ahí —
-// esto es independiente del permiso de cumplimiento.
-// Mismo criterio que require_task_assigner: admin, CEO o manager (un
-// manager solo verá vendedores/tareas de su propio equipo gracias a
-// /api/my-team y al scoping del backend, así que no hace falta acotar acá
-// también quién aparece en los selectores).
-function canAssignTasks(){ return isAdmin() || isCeo() || isManager(); }
+// 16 sep (feedback de reunión): un vendedor SÍ puede crear tareas, pero
+// solo para sí mismo — no para otro vendedor (eso sigue siendo exclusivo
+// de admin/ceo/manager, ver canAssignTasksToOthers). El backend refuerza
+// el límite real (require_task_creator + el chequeo de "a sí mismo" en
+// create_task, main.py); esto solo decide qué se muestra en pantalla.
+function canAssignTasks(){ return isAdmin() || isCeo() || isManager() || isVendedor(); }
+// Quién puede elegir A QUIÉN se le asigna la tarea (el desplegable de
+// vendedor en el modal) — a diferencia de canAssignTasks() de arriba, acá
+// NO entra un vendedor: él siempre queda fijo asignándose a sí mismo (ver
+// renderTaskModal/addTask).
+function canAssignTasksToOthers(){ return isAdmin() || isCeo() || isManager(); }
 
 const TABS = [
   { id: "global", label: "Global View", show: () => true },
@@ -956,8 +974,12 @@ async function tryEnterFromDataforce(){
     await boot();
     return true;
   } catch (err) {
+    document.getElementById('ssoRedirectScreen').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
     document.getElementById('loginError').textContent = err.message || "Could not sign you in automatically from Dataforce. You can try username/password, or contact an administrator.";
     document.getElementById('loginRedirectHint').style.display = 'none';
+    document.getElementById('loginPasswordFallback').style.display = 'block';
+    document.getElementById('togglePasswordLogin').style.display = 'none';
     return true; // ya se mostró el motivo en pantalla — no seguir con la sesión guardada vieja
   }
 }
@@ -976,6 +998,7 @@ async function tryResumeSession(){
 
 async function boot(){
   document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('ssoRedirectScreen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   document.getElementById('userName').textContent = state.user.nombre;
   const roleLabel = state.user.rol === 'admin' ? 'Admin (full access)' : state.user.rol === 'ceo' ? 'CEO' : state.user.rol === 'manager' ? 'Manager (task assignment)' : ('Sales Rep · ' + (state.user.continente_permitido || ''));
@@ -1196,7 +1219,7 @@ async function loadCoreData(){
 
     // estas tres son independientes entre sí: se piden todas a la vez en vez
     // de una por una, que era la causa principal de la demora al entrar.
-    const bootTasks = [ loadTasks(), loadAlerts(), refreshReportData(), loadGlobalData(), loadOrigins(), loadZonasGsaForce() ];
+    const bootTasks = [ loadTasks(), loadAlerts(), refreshReportData(), loadGlobalData(), loadOrigins(), loadAerolineasDestino() ];
     if (isAdmin() || isCeo()) bootTasks.push(loadUsers()); // necesario para el selector de vendedor en Seguimiento (admin y CEO pueden asignar)
     // SU equipo — en vez de state.users con TODOS los vendedores (como
     // arriba), acá se llena con /api/my-team, que el backend ya devuelve
@@ -1293,7 +1316,7 @@ function resetReportFilterState(){
   f.paises = [];
   f.destAeropuerto = [];
   f.origenPais = "Todos"; f.origenAeropuertos = [];
-  f.zonaGsaForce = "Todos"; f.soloDestinosRelevantes = false;
+  f.aerolineaDestino = "Todos"; state.reporteCountryOptions = [];
   f.airportOptionsForFilter = [];
   state.search = "";
   state.period = "ytd"; 
@@ -1355,10 +1378,9 @@ async function refreshReportData(){
   if (aeropuertoParam('reporte')) params.set('aeropuerto', aeropuertoParam('reporte'));
   if (f.origenPais !== "Todos") params.set('origen_pais', f.origenPais);
   if (origenAeropuertoParam('reporte')) params.set('origen_aeropuerto', origenAeropuertoParam('reporte'));
-  // "solo destinos relevantes" (ver /api/zonas-gsaforce y filter_df en
+  // "Destinos <aerolínea>" (ver /api/aerolineas-destino y filter_df en
   // data_helpers.py). Mismo patrón que el resto de filtros de esta función.
-  if (f.zonaGsaForce !== "Todos") params.set('zona_gsaforce', f.zonaGsaForce);
-  if (f.soloDestinosRelevantes) params.set('solo_destinos_relevantes', 'true');
+  if (f.aerolineaDestino !== "Todos") params.set('aerolinea_destino', f.aerolineaDestino);
   if (state.period === "custom") {
     if (state.dateFrom) params.set('date_from', state.dateFrom);
     if (state.dateTo) params.set('date_to', state.dateTo);
@@ -1479,9 +1501,10 @@ async function refreshExpandedCountryDetailIfOpen(){
 function buildTrendUrl(){
   const f = state.tabFilters.reporte;
   const trendScope = state.trendScope;
-  const p = ytdParams(); 
+  const p = ytdParams();
   if (f.origenPais !== "Todos") p.set('origen_pais', f.origenPais);
   if (origenAeropuertoParam('reporte')) p.set('origen_aeropuerto', origenAeropuertoParam('reporte'));
+  if (f.aerolineaDestino !== "Todos") p.set('aerolinea_destino', f.aerolineaDestino);
   if (trendScope.type === "cliente") {
     p.set('pais', trendScope.paisCode); p.set('cliente', trendScope.cliente);
     return '/api/trend?' + p.toString();
@@ -1514,6 +1537,7 @@ async function loadClients(paisCode){
   if (aeropuertoParam('reporte')) p.set('aeropuerto', aeropuertoParam('reporte'));
   if (f.origenPais !== "Todos") p.set('origen_pais', f.origenPais);
   if (origenAeropuertoParam('reporte')) p.set('origen_aeropuerto', origenAeropuertoParam('reporte'));
+  if (f.aerolineaDestino !== "Todos") p.set('aerolinea_destino', f.aerolineaDestino);
   return api('/api/clients?' + p.toString());
 }
 // extraParams (opcional): querystring adicional a agregar (usado por el
@@ -1536,7 +1560,16 @@ async function populateDestinationFilters(scope, paisCode){
     state.tabFilters[scope].airportOptionsForFilter = [];
     return;
   }
-  state.tabFilters[scope].airportOptionsForFilter = await loadAirports(paisCode);
+  // En Reporte de ventas, si hay una aerolínea elegida en "Destinos
+  // <aerolínea>", el desplegable de aeropuerto de destino también se
+  // acota a esa aerolínea (mismo criterio que loadDetailContent/
+  // loadClients) — en el resto de las pestañas no existe ese filtro, así
+  // que este param queda vacío ahí.
+  const rf = state.tabFilters.reporte;
+  const extraParams = (scope === 'reporte' && rf.aerolineaDestino !== 'Todos')
+    ? new URLSearchParams({ aerolinea_destino: rf.aerolineaDestino }).toString()
+    : undefined;
+  state.tabFilters[scope].airportOptionsForFilter = await loadAirports(paisCode, extraParams);
 }
 
 // (/api/client-view/routes, ya usado por Follow-up "By client"), la de
@@ -1920,17 +1953,19 @@ async function openAddTaskModalForCountry(paisCode, paisName){
 }
 
 // ---------------------------------------------------------------------
-// Modal "+ ADD TASK" (Follow-up, vista admin/CEO) — antes era un panel
-// fijo "Assign new task" que vivía siempre visible al lado de la lista de
-// rato" fuera un botón que abre el mismo formulario en un modal. Mismo
-// patrón que el modal de detalle de cliente (renderClientModal) de
-// arriba: un div propio colgado del body, que se re-arma completo cada
-// vez que cambia el estado.
+// Modal "+ ADD TASK" (Follow-up) — antes era un panel fijo "Assign new
+// task" que vivía siempre visible al lado de la lista de tareas; ahora es
+// un botón que abre el mismo formulario en un modal. Mismo patrón que el
+// modal de detalle de cliente (renderClientModal) de arriba: un div propio
+// colgado del body, que se re-arma completo cada vez que cambia el estado.
+// Disponible para admin/CEO/manager (asignan a cualquier vendedor
+// supervisado) y para el propio vendedor (solo puede asignarse a sí
+// mismo — ver canAssignTasksToOthers/renderTaskModal).
 // ---------------------------------------------------------------------
 function openTaskModal(){
-  // poder asignar tareas — el permiso real está reforzado en el backend
-  // (require_manager), pero esto evita que el modal se abra igual si algún
-  // botón quedara sin esconder por error.
+  // Refuerza en el frontend el mismo permiso que ya valida el backend
+  // (require_task_creator), pero esto evita que el modal se abra igual si
+  // algún botón quedara sin esconder por error.
   if (!canAssignTasks()) return;
   state.taskModalOpen = true;
   renderTaskModal();
@@ -1975,11 +2010,18 @@ function renderTaskModal(){
           `}
           <div class="form-group">
             <label class="form-label">Sale rep</label>
+            ${canAssignTasksToOthers() ? `
             <select id="taskVendedor" class="form-select">
               <option value="">Choose sales rep…</option>
               ${vendedores.map(v => `<option value="${esc(v.username)}" ${nt.vendedor_username===v.username?'selected':''}>${esc(v.nombre)}${v.continente_permitido?' ('+esc(v.continente_permitido)+')':''}</option>`).join('')}
             </select>
             ${vendedores.length===0 ? `<div class="hint">No sales reps created yet — go to the Permissions tab to add one.</div>` : ''}
+            ` : `
+            <!-- 16 sep: un vendedor solo puede asignarse tareas a sí mismo — no hay
+                 desplegable, queda fijo con su propio nombre (ver addTask, que lee
+                 state.user.username directo en vez de este campo). -->
+            <div class="form-input" style="background:#FAFAF6;color:var(--muted);">${esc(state.user.nombre)} (you)</div>
+            `}
           </div>
           <div class="form-group">
             <label class="form-label">Comment</label>
@@ -2113,7 +2155,11 @@ async function sendTasksEmail(groupBy){
 }
 
 async function addTask(){
-  const vendedor_username = document.getElementById('taskVendedor').value;
+  // 16 sep: un vendedor no tiene el desplegable #taskVendedor (ver
+  // renderTaskModal) — siempre se asigna a sí mismo. El permiso real se
+  // refuerza en el backend (require_task_creator + el chequeo en
+  // create_task, main.py), esto es solo para que el campo tenga un valor.
+  const vendedor_username = canAssignTasksToOthers() ? document.getElementById('taskVendedor').value : state.user.username;
   const nt = state.newTask;
   // en modo de solo lectura (contexto conocido) no existen los inputs
   // #taskCliente/#taskPais/#taskOrigen — el cliente/país/origen ya vienen
@@ -2128,18 +2174,16 @@ async function addTask(){
   const btn = document.getElementById('addTaskBtn');
   if (!vendedor_username) { alert('Choose a sales rep before assigning the task.'); return; }
   if (!cliente) { alert('Missing client.'); return; }
-  // blanco (ella lo escribe aparte, ya no viene prellenado) — si lo deja
-  // vacío se guarda un detalle genérico igual que antes, para que la tarea
-  // siempre tenga algo que describirla en las listas/minutas.
+  // Si se deja en blanco, se guarda un detalle genérico, para que la
+  // tarea siempre tenga algo que describirla en las listas/minutas.
   const detalleFinal = detalle || `Follow up client: ${cliente}${pais ? ' in ' + pais : ''}`;
-  // market share la temporalidad para saber desde cuando a cuando estoy
-  // mirando cuando vi esa oportunidad" — cualquier flujo que llegó a este
-  // modal ya calculó (o intentó calcular) toneladas de mercado/market
-  // share/período en nt.routeInfo (ver openAddTaskModalFor,
-  // openAddTaskModalForAirport, assignFromOpportunity, y los quick-assign
-  // de alertas/oportunidad manual/cumplimiento) — se manda tal cual al
-  // backend para que Follow-up ya no tenga que recalcularlo en vivo contra
-  // la base de datos que esté activa en ese momento.
+  // Cualquier flujo que llegó a este modal ya calculó (o intentó
+  // calcular) toneladas de mercado/market share/período en
+  // nt.routeInfo (ver openAddTaskModalFor, openAddTaskModalForAirport,
+  // assignFromOpportunity, y los quick-assign de alertas/oportunidad
+  // manual/cumplimiento) — se manda tal cual al backend para que
+  // Follow-up ya no tenga que recalcularlo en vivo contra la base de
+  // datos que esté activa en ese momento.
   const ri = nt.routeInfo;
   try {
     if (btn) { btn.disabled = true; btn.textContent = 'Assigning…'; }
@@ -2526,28 +2570,32 @@ async function loadOrigins(pais){
   } catch(e) {}
 }
 
-// de ventas (cruce con int_airports, ver /api/zonas-gsaforce en main.py) —
-// se vuelve a pedir cada vez que cambia la fuente activa (mismo lugar
-// donde ya se recarga /api/origins al cambiar de base), porque la lista de
-// zonas depende de qué destinos trae de verdad la fuente activa.
-async function loadZonasGsaForce(){
+// Reporte de ventas (cruce con int_airports, ver /api/aerolineas-destino en
+// main.py) — se vuelve a pedir cada vez que cambia la fuente activa (mismo
+// lugar donde ya se recarga /api/origins al cambiar de base), porque la
+// lista de aerolíneas con destinos reales depende de la fuente activa.
+async function loadAerolineasDestino(){
   try {
-    state.zonaGsaForceOptions = await api('/api/zonas-gsaforce');
-  } catch(e) { state.zonaGsaForceOptions = []; }
+    state.aerolineasDestinoOptions = await api('/api/aerolineas-destino');
+  } catch(e) { state.aerolineasDestinoOptions = []; }
 }
 
-// Si la fuente activa tiene una aerolínea confirmada para el cruce con
-// int_airports (ver dest_airline_flag_column en /api/data-sources), esto
-// devuelve esa columna (ej. "CX") — el checkbox "Solo destinos relevantes"
-// solo se muestra cuando esto no es null, para no ofrecer un filtro que no
-// hace nada en fuentes todavía sin confirmar (ej. USA — CASS, Avianca).
-function fuenteActivaAerolineaRelevante(){
-  // state.dataSources (no allDataSources: esa es solo para admin/CEO, ver
-  // /api/data-sources/all) — /api/data-sources sí responde para cualquier
-  // rol, incluido vendedor, así que es la lista correcta para saber si la
-  // fuente activa tiene el cruce con int_airports habilitado.
-  const activa = (state.dataSources || []).find(f => f.id === state.dataSource);
-  return activa ? (activa.dest_airline_flag_column || null) : null;
+// Universo de continentes/países disponibles para el selector "Destino" del
+// Reporte de ventas cuando hay una aerolínea elegida en "Destinos
+// <aerolínea>" — mismo patrón que loadGlobalData()/state.globalCountries
+// (ver más abajo), pero acotado SOLO por la aerolínea (sin continente/país/
+// aeropuerto, esos se siguen aplicando en el cliente sobre esta lista, ver
+// countryOptionsForContinente/continentOptions), para que el propio
+// selector de continente/país muestre solo lo que tiene "Y" para esa
+// aerolínea, en vez de solo filtrar los resultados finales. Con "Todos" no
+// hace falta pedir nada — se usa directamente state.countryOptionsAll
+// (universo completo, ya cargado).
+async function loadReporteCountryOptions(){
+  const rf = state.tabFilters.reporte;
+  if (rf.aerolineaDestino === "Todos") { state.reporteCountryOptions = []; return; }
+  try {
+    state.reporteCountryOptions = await api('/api/countries?' + new URLSearchParams({ aerolinea_destino: rf.aerolineaDestino }).toString());
+  } catch(e) { state.reporteCountryOptions = []; }
 }
 
 async function loadGlobalData(){
@@ -2859,15 +2907,17 @@ function renderCountryMultiSelectPanel(scope, idSuffix){
       </div>`;
 }
 
-// feedback de reunión): "el continente de destino [tampoco] es
-// seleccionable", comparando con que el filtro de país ya deja tildar
-// varios (ver comentario junto a countryMultiSelectLabel arriba) —
-// mismo patrón visual/de wiring exacto, solo que 'continentOptions()' no
-// depende de nada más (a diferencia de countryOptionsForContinente, que sí
-// depende del continente elegido) porque no hay un nivel geográfico más
-// arriba del que dependa. 'locked' (lockedContinente(), vista restringida
-// de un vendedor) sigue dejando el control fijo en un solo continente, sin
-// checkboxes — igual que antes con el <select> deshabilitado.
+// El filtro de continente de destino también deja tildar varios a la vez
+// (comparando con que el filtro de país ya deja tildar varios — ver
+// comentario junto a countryMultiSelectLabel arriba) — mismo patrón visual/
+// de wiring exacto, solo que 'continentOptions(scope)' no depende de nada
+// más (a diferencia de countryOptionsForContinente, que sí depende del
+// continente elegido) porque no hay un nivel geográfico más arriba del que
+// dependa (salvo, en la pestaña 'reporte', la aerolínea elegida en
+// "Destinos <aerolínea>" — ver countryOptionsUniverse). 'locked'
+// (lockedContinente(), vista restringida de un vendedor) sigue dejando el
+// control fijo en un solo continente, sin checkboxes — igual que antes con
+// el <select> deshabilitado.
 function continentMultiSelectLabel(f){
   if (f.continentes.length === 0) return 'All continents';
   if (f.continentes.length === 1) return f.continentes[0];
@@ -2879,7 +2929,7 @@ function renderContinentMultiSelectPanel(scope, idSuffix){
   if (locked) {
     return `<span class="multi-select-btn" style="opacity:.7;cursor:default;" title="View restricted to ${esc(locked)}">${esc(locked)}</span>`;
   }
-  const opts = continentOptions();
+  const opts = continentOptions(scope);
   return `
       <div class="multi-select-wrap">
         <button type="button" class="multi-select-btn" id="continenteMultiToggle${idSuffix}">
@@ -2894,29 +2944,24 @@ function renderContinentMultiSelectPanel(scope, idSuffix){
       </div>`;
 }
 
-// "solo destinos relevantes" (cruce con int_airports, ver
-// /api/zonas-gsaforce y filter_df en data_helpers.py). Se oculta por
-// completo si la fuente activa no tiene zonas (state.zonaGsaForceOptions
-// vacío) — no tiene sentido mostrar un selector sin opciones. El checkbox
-// de "solo relevantes" aparte se oculta si la fuente activa todavía no
-// tiene una aerolínea confirmada para ese cruce (ver
-// fuenteActivaAerolineaRelevante) — hoy, solo México — CASS (Cathay).
-function renderZonaGsaForceFilterGroup(scope){
-  if (!state.zonaGsaForceOptions.length) return '';
+// "Destinos <aerolínea>" (cruce con int_airports, ver
+// /api/aerolineas-destino y filter_df en data_helpers.py) — reemplaza al
+// filtro anterior "GSA Force zone"/"solo destinos relevantes", que
+// agrupaba por geografía en vez de filtrar por aerolínea y solo funcionaba
+// para una fuente. Se oculta por completo si la fuente activa no tiene
+// ninguna aerolínea con destinos
+// reales (state.aerolineasDestinoOptions vacío) — no tiene sentido mostrar
+// un selector sin opciones.
+function renderAerolineaDestinoFilterGroup(scope){
+  if (!state.aerolineasDestinoOptions.length) return '';
   const f = state.tabFilters[scope];
-  const aerolineaRelevante = fuenteActivaAerolineaRelevante();
   return `
     <div class="filter-group">
-      <span class="filter-group-label">GSA Force zone</span>
-      <select id="zonaGsaForceSelect_${esc(scope)}" data-scope="${esc(scope)}">
-        <option value="Todos">All zones</option>
-        ${state.zonaGsaForceOptions.map(z => `<option value="${esc(z)}" ${f.zonaGsaForce===z?'selected':''}>${esc(z)}</option>`).join('')}
+      <span class="filter-group-label">Destinations</span>
+      <select id="aerolineaDestinoSelect_${esc(scope)}" data-scope="${esc(scope)}">
+        <option value="Todos">All destinations</option>
+        ${state.aerolineasDestinoOptions.map(a => `<option value="${esc(a.code)}" ${f.aerolineaDestino===a.code?'selected':''}>Destinations ${esc(a.label)}</option>`).join('')}
       </select>
-      ${aerolineaRelevante ? `
-      <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap;">
-        <input type="checkbox" id="soloDestinosRelevantesCb_${esc(scope)}" data-scope="${esc(scope)}" ${f.soloDestinosRelevantes?'checked':''}>
-        Only relevant destinations (${esc(aerolineaRelevante)})
-      </label>` : ''}
     </div>`;
 }
 
@@ -3573,10 +3618,21 @@ function renderProximamente(){
   </div>`;
 }
 
+// Universo de países/continentes a partir del cual se arman las opciones
+// del selector de Destino: para la pestaña 'reporte', cuando hay una
+// aerolínea elegida en "Destinos <aerolínea>", se usa el universo ya
+// acotado a esa aerolínea (ver loadReporteCountryOptions) en vez del
+// universo completo — así el propio selector solo ofrece continentes/
+// países con "Y" para esa aerolínea.
+function countryOptionsUniverse(scope){
+  const rf = state.tabFilters.reporte;
+  if (scope === 'reporte' && rf.aerolineaDestino !== 'Todos' && state.reporteCountryOptions.length) return state.reporteCountryOptions;
+  return state.countryOptionsAll;
+}
 function countryOptionsForContinente(scope){
   const ecs = effContinentes(scope);
   const seen = new Map();
-  state.countryOptionsAll.forEach(r => {
+  countryOptionsUniverse(scope).forEach(r => {
     if (ecs.length && !ecs.includes(r.Des_Continent)) return;
     if (!seen.has(r.Des_Country_Code)) seen.set(r.Des_Country_Code, { code: r.Des_Country_Code, name: r.Des_Country, size: 0 });
     seen.get(r.Des_Country_Code).size += (r.mkt_w || 0);
@@ -3586,7 +3642,7 @@ function countryOptionsForContinente(scope){
     ? arr.sort((a,b) => b.size - a.size)
     : arr.sort((a,b) => a.name.localeCompare(b.name));
 }
-function continentOptions(){ return Array.from(new Set(state.countryOptionsAll.map(r => r.Des_Continent))).sort(); }
+function continentOptions(scope){ return Array.from(new Set(countryOptionsUniverse(scope).map(r => r.Des_Continent))).sort(); }
 
 function alertIcon(tipo){ return tipo === 'oportunidad' ? '&#127919;' : '&#8595;'; }
 
@@ -3626,7 +3682,7 @@ function renderReporte(){
       </select>
       ${renderOrigenAeropuertoMultiSelectPanel('reporte', 'Report')}
     </div>
-    ${renderZonaGsaForceFilterGroup('reporte')}
+    ${renderAerolineaDestinoFilterGroup('reporte')}
     ${renderDestinoFilterBar('reporte')}
     <input id="searchInput" placeholder="Search country..." value="${esc(state.search)}" style="font-size:12px;padding:6px 8px;border-radius:6px;border:1px solid var(--line);">
     <select id="periodSelect">
@@ -4128,11 +4184,10 @@ function renderTaskItem(t, { canEdit }){
   </div>`;
 }
 
-// vendedor tambien que este asi separada por el cliente" — antes esto era
-// una lista plana de todas sus tareas mezcladas; ahora se agrupa por
-// cliente igual que la vista del admin (tasksGroupedByClient), y cada
-// tarea se muestra en la misma fila compacta (renderTaskRowCompact), con
-// el input para que el vendedor deje su propio comentario/respuesta.
+// Se agrupa por cliente igual que la vista del admin (tasksGroupedByClient),
+// en vez de una lista plana de todas las tareas mezcladas; cada tarea se
+// muestra en la misma fila compacta (renderTaskRowCompact), con el input
+// para que el vendedor deje su propio comentario/respuesta.
 function renderSeguimientoVendedor(){
   const myTasks = state.tasks;
   const done = myTasks.filter(t => t.estado === 'hecha').length;
@@ -4163,7 +4218,10 @@ function renderSeguimientoVendedor(){
   <div class="panel">
     <div class="panel-head">
       <span>My tasks</span>
-      <div class="progress-wrap"><div class="progress-bar"><div class="progress-fill ${prog>=70?'ok':''}" style="width:${prog}%;"></div></div><div class="progress-label">${prog}% (${done}/${myTasks.length})</div></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="progress-wrap"><div class="progress-bar"><div class="progress-fill ${prog>=70?'ok':''}" style="width:${prog}%;"></div></div><div class="progress-label">${prog}% (${done}/${myTasks.length})</div></div>
+        <button class="btn btn-primary" id="openTaskModalBtn" style="padding:3px 10px;font-size:11px;">+ Add task</button>
+      </div>
     </div>
     <div style="padding:8px 10px 0;display:flex;align-items:center;gap:6px;">
       <label class="hint" for="vendorTaskSortOrder" style="margin:0;">Sort:</label>
@@ -4191,7 +4249,7 @@ function renderSeguimientoVendedor(){
       }).join('')}
     </div>
   </div>
-  <div class="hint" style="margin-top:10px;">As a sales rep you can review your tasks, comment, and mark your progress. Only an admin, the CEO, or your manager can assign you new tasks.</div>
+  <div class="hint" style="margin-top:10px;">As a sales rep you can review your tasks, comment, mark your progress, and create new tasks for yourself. An admin, the CEO, or your manager can also assign you tasks.</div>
   <div class="soon-card" style="margin-top:14px;">&#128231; Send meeting minutes by email — coming soon</div>
   `;
 }
@@ -4302,10 +4360,8 @@ function renderTasksByClient(){
   }).join('');
 }
 
-// la vista sea por reporte o bd entonces si desliego puedo ver los
-// origenes donde asigne tareas y si despliego pueda ver los clientes" —
-// vista nueva "By Report/BD" (reemplaza "By client"/"By origin & client"):
-// 3 niveles, BD -> origen donde se asignó la tarea -> cliente.
+// Vista "By Report/BD" (reemplaza "By client"/"By origin & client"): 3
+// niveles, BD -> origen donde se asignó la tarea -> cliente.
 function tasksGroupedByFuente(){
   const groups = new Map(); // fuente -> Map(origen -> Map(cliente -> tasks[]))
   state.tasks.forEach(t => {
@@ -4331,11 +4387,9 @@ function tasksGroupedByFuente(){
   }));
 }
 
-// por ejemplo las BD esos de casets tampoco me gustan siento que no se ve
-// profesional con tanto emoji" — se sacó el 💾 (&#128190;) que iba antes
-// del nombre de cada BD acá y en renderTasksByVendorFuente/el botón
-// "Download PDF" de más abajo; el nombre de la fuente queda solo, sin
-// icono.
+// Se sacó el 💾 (&#128190;) que iba antes del nombre de cada BD acá y en
+// renderTasksByVendorFuente/el botón "Download PDF" de más abajo; el
+// nombre de la fuente queda solo, sin icono.
 function renderTasksByFuente(){
   const groups = tasksGroupedByFuente();
   if (groups.length === 0) return `<div class="empty">No tasks assigned to anyone yet.</div>`;
@@ -5269,6 +5323,7 @@ async function loadDetailContent(code, name){
       const p = periodParams();
       if (f.origenPais !== "Todos") p.set('origen_pais', f.origenPais);
       if (origenAeropuertoParam('reporte')) p.set('origen_aeropuerto', origenAeropuertoParam('reporte'));
+      if (f.aerolineaDestino !== "Todos") p.set('aerolinea_destino', f.aerolineaDestino);
       const airports = await loadAirports(code, p.toString());
       if (myRequestId !== state.detailWrapRequestSeq) return;
       state.reportAirportsCache = { code, airports };
@@ -5330,6 +5385,7 @@ async function loadAirportClientsContent(countryCode, countryName, airportCode, 
     p.set('aeropuerto', airportCode);
     if (f.origenPais !== "Todos") p.set('origen_pais', f.origenPais);
     if (origenAeropuertoParam('reporte')) p.set('origen_aeropuerto', origenAeropuertoParam('reporte'));
+    if (f.aerolineaDestino !== "Todos") p.set('aerolinea_destino', f.aerolineaDestino);
     clients = await api('/api/clients?' + p.toString());
   } catch (e) {
     // cargando, etc.) se tragaba en silencio y mostraba "No clients
@@ -5395,6 +5451,7 @@ async function loadClientAirportsContent(countryCode, countryName, clienteNombre
     p.set('cliente', clienteNombre);
     if (f.origenPais !== "Todos") p.set('origen_pais', f.origenPais);
     if (origenAeropuertoParam('reporte')) p.set('origen_aeropuerto', origenAeropuertoParam('reporte'));
+    if (f.aerolineaDestino !== "Todos") p.set('aerolinea_destino', f.aerolineaDestino);
     airports = await api('/api/airports?' + p.toString());
   } catch (e) {
     // disfrazar un error real de servidor como "sin aeropuertos".
@@ -5697,19 +5754,21 @@ function wireEvents(){
       renderMain();
       await refreshExpandedCountryDetailIfOpen();
     };
-    // relevantes" (cruce con int_airports) — mismo patrón que el resto de
-    // filtros del Reporte de ventas de acá arriba.
-    const zonaGsaForceSel = document.getElementById('zonaGsaForceSelect_reporte');
-    if (zonaGsaForceSel) zonaGsaForceSel.onchange = async (e) => {
-      rf.zonaGsaForce = e.target.value;
-      await refreshReportData();
-      renderMain();
-      await refreshExpandedCountryDetailIfOpen();
-    };
-    const soloRelevantesCb = document.getElementById('soloDestinosRelevantesCb_reporte');
-    if (soloRelevantesCb) soloRelevantesCb.onchange = async (e) => {
-      rf.soloDestinosRelevantes = e.target.checked;
-      await refreshReportData();
+    // "Destinos <aerolínea>" (cruce con int_airports) — mismo patrón que el
+    // resto de filtros del Reporte de ventas de acá arriba. Al cambiar de
+    // aerolínea, el universo de continentes/países disponibles cambia (ver
+    // loadReporteCountryOptions), así que además de recargar el reporte se
+    // limpia la selección de continente/país/aeropuerto de destino que
+    // hubiera — un continente elegido antes puede ya no tener destinos
+    // para la aerolínea nueva, y dejarlo puesto se sentiría como "no
+    // aparece nada" sin que quede claro por qué.
+    const aerolineaDestinoSel = document.getElementById('aerolineaDestinoSelect_reporte');
+    if (aerolineaDestinoSel) aerolineaDestinoSel.onchange = async (e) => {
+      rf.aerolineaDestino = e.target.value;
+      rf.continentes = lockedContinente() ? [lockedContinente()] : [];
+      rf.paises = [];
+      rf.destAeropuerto = [];
+      await Promise.all([loadReporteCountryOptions(), refreshReportData()]);
       renderMain();
       await refreshExpandedCountryDetailIfOpen();
     };
