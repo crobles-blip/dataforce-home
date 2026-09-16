@@ -320,15 +320,19 @@ main { display:flex; flex-direction:column; align-items:center; justify-content:
       (function () {
         var card = document.currentScript.previousElementSibling;
         if (!card || !card.classList.contains('card-market-data')) return;
-        try {
-          var raw = localStorage.getItem('df_user') || sessionStorage.getItem('df_user');
-          var user = raw ? JSON.parse(raw) : null;
-          if (user && user.email) {
-            card.href = 'https://dataforce-marketdata-git-911713216717.us-east1.run.app/?email=' + encodeURIComponent(user.email);
-          }
-        } catch (e) { /* si algo falla, el cuadrado queda con el href de respaldo de arriba */ }
+        card.addEventListener('click', function (e) {
+          try {
+            var raw = localStorage.getItem('df_user') || sessionStorage.getItem('df_user');
+            var user = raw ? JSON.parse(raw) : null;
+            if (user && user.email) {
+              e.preventDefault();
+              window.location.href = 'https://dataforce.gsaforce.com/market-data/?email=' + encodeURIComponent(user.email);
+            }
+            // si no hay usuario guardado, el clic sigue normal y esa pagina pedira iniciar sesion
+          } catch (err) { /* si algo falla, el clic sigue normal */ }
+        });
       })();
-      </script>    
+      </script>   
 </div>
     <div class="hub-footer"><span></span>DATAFORCE · GSA Cargo Intelligence Platform<span></span></div>
   </main>
