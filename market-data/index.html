@@ -7,7 +7,22 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
   :root{
-    --navy:#003B71; --navy2:#0A4E8C; --sky:#7DAED3; --amberDark:#8C6218;
+    /* Pedido del 16 sep: "usar el header del dataforce de sharon con
+       sus colores" — --navy/--navy2/--sky son las únicas variables de marca
+       que se tocan acá (se usan en TODA la app: header, botones primarios,
+       tabs activos, badges — así que este cambio ya las alinea a todas sin
+       tener que tocar cada componente por separado). --navy pasa a ser el
+       mismo navy que usa el index.html de dataforce-home (#0d1f3c);
+       --navy2 (hover/acento) pasa al azul de acento de Sharon (#1a56db,
+       "--blue" en su index.html) en vez del navy más claro que tenía antes;
+       --sky (texto claro sobre fondo navy, ej. el rol del usuario en el
+       header) es nuevo — no existía un color así en dataforce-home, así que
+       se dejó un celeste derivado de ese mismo azul de acento, con
+       suficiente contraste sobre el navy nuevo. El resto de la paleta
+       (colores de datos/gráficos: --teal, --coral, --amberDark, --paper,
+       --card, --line, --ink, --muted) no cambia — esos no son "el header".
+    */
+    --navy:#0D1F3C; --navy2:#1A56DB; --sky:#8FB4EC; --amberDark:#8C6218;
     --teal:#1E7F72; --coral:#C4553B; --ink:#14213D; --muted:#64748B;
     --paper:#F7F5F0; --card:#FFFFFF; --line:#E4E1D8;
   }
@@ -36,13 +51,25 @@
   .brand{display:flex; align-items:center; gap:12px;}
   .brand-icon{height:34px; border-radius:6px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
   .brand-title{color:#fff; font-size:13px; font-weight:600; letter-spacing:.04em;}
-  .brand-sub{color:#9FC3E0; font-size:11px; margin-top:2px;}
+  .brand-sub{color:var(--sky); font-size:11px; margin-top:2px;}
   .hamburger-btn{background:transparent; border:none; cursor:pointer; padding:6px; display:flex; flex-direction:column; justify-content:center; gap:4px; margin-right:2px; flex-shrink:0;}
   .hamburger-btn span{display:block; width:20px; height:2px; background:#fff; border-radius:2px;}
   .hamburger-btn:hover span{background:var(--sky);}
-  .brand-df{display:flex; align-items:center; gap:6px;}
-  .brand-df-icon{color:#fff; font-size:15px; line-height:1;}
-  .brand-df-text{color:#fff; font-size:14px; font-weight:700; letter-spacing:.06em;}
+  /* 16 sep: "poner el logo en el header" — la marca DATAFORCE de texto ya
+     estaba. Primer intento: texto + ícono dentro de una cajita con borde
+     (como la tarjeta de Data Sources en dataforce-home). CORRECCIÓN (mismo
+     día, con la captura real del logo de dataforce-home tal cual
+     aparece ahí — sin caja, texto en peso normal y el ícono DESPUÉS del
+     texto, no antes): se saca el borde/padding/fondo, el texto pasa a
+     peso normal (no bold) y un poco más clclaro que blanco puro, y el
+     orden en el DOM se invierte (texto primero, ícono al final) para que
+     calce con esa captura. El ícono sigue siendo el mismo SVG inline
+     (trazo "abrir en pestaña nueva", sin depender de ningún archivo de
+     imagen), solo un poco más grande para calzar la proporción de la
+     captura. */
+  .brand-df{display:flex; align-items:center; gap:4px;}
+  .brand-df-icon{color:rgba(255,255,255,.92); font-size:17px; line-height:1; display:flex; align-items:center;}
+  .brand-df-text{color:rgba(255,255,255,.92); font-size:14px; font-weight:400; letter-spacing:.04em;}
   .brand-title-center{flex:1 1 auto; min-width:0; text-align:center; color:var(--sky); font-size:12px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none;}
   .brand{flex:0 0 auto;}
   .user-box{flex:0 0 auto;}
@@ -129,12 +156,45 @@
   .country-cont{font-size:10px; color:var(--muted); margin-left:4px;}
   .expand-wrap{background:#FAFAF6; padding:6px 16px 12px; max-height:420px; overflow-y:auto;}
   .expand-title{font-size:10px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;}
-  .client-grid{display:grid; grid-template-columns:1fr 90px 90px 60px 128px; gap:8px; font-size:12px; padding:6px 0; border-bottom:1px solid var(--line); align-items:center; cursor:pointer;}
+  /* 16 sep: 2 columnas de tarifa nuevas (Mkt Rate / Cathay Rate, ver
+     detailHeaderRow) — las 5 columnas numéricas quedan todas del mismo
+     ancho (80px) y centradas en vez de 90/90/60 a la derecha, para que se
+     vea prolijo con 2 columnas más. */
+  .client-grid{display:grid; grid-template-columns:1fr repeat(5, 80px) 128px; gap:8px; font-size:12px; padding:6px 0; border-bottom:1px solid var(--line); align-items:center; cursor:pointer;}
   .client-grid .row-actions{display:flex; gap:4px; justify-content:flex-end;}
   .client-grid:last-child{border-bottom:none;}
   .client-grid:hover{background:#F0EDE4;}
-  .client-grid .num{text-align:right; font-family:ui-sans-serif,system-ui,-apple-system,sans-serif; font-variant-numeric:tabular-nums; color:var(--muted);}
+  .client-grid .num{text-align:center; font-family:ui-sans-serif,system-ui,-apple-system,sans-serif; font-variant-numeric:tabular-nums; color:var(--muted);}
   .client-grid .num.b{color:var(--ink); font-weight:500;}
+  /* 16 sep: pestaña admin "Airline Destinations" (pedido de Sharon) — una
+     columna por aerolínea, cada una con su buscador de "agregar" arriba y
+     la lista actual (agrupada continente -> país) debajo; se apilan en
+     columnas más angostas cuando no entran todas en el ancho disponible.
+     Pedido del 16 sep, viendo la pestaña real con LATAM en 136
+     destinos: "hacer mas grande paa que no tenga que hacer scroll" — antes
+     cada columna tenía su propio scroll interno (max-height:560px), lo que
+     obligaba a hacer scroll DENTRO de una columna angosta para ver toda la
+     lista. Se saca ese límite: cada columna crece con su contenido y el
+     scroll queda a cargo de la página completa (normal en una pantalla de
+     administración, no es algo que se consulte a cada rato).  El buscador
+     de "agregar destino" SÍ mantiene su propio scroll (es un desplegable
+     chico de resultados, no la lista principal).*/
+  .destino-aerolinea-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:14px; align-items:start;}
+  .destino-aerolinea-col{border:1px solid var(--line); border-radius:8px; background:#FAFAF6; display:flex; flex-direction:column;}
+  .destino-aerolinea-col-head{font-size:12px; font-weight:600; padding:10px 12px; border-bottom:1px solid var(--line); background:#fff; border-radius:8px 8px 0 0;}
+  .destino-aerolinea-search{padding:8px 10px; border-bottom:1px solid var(--line); position:relative;}
+  .destino-aerolinea-search-results{margin-top:6px; max-height:180px; overflow-y:auto; border:1px solid var(--line); border-radius:6px; background:#fff;}
+  .destino-aerolinea-search-item{display:flex; align-items:center; justify-content:space-between; gap:6px; padding:5px 8px; font-size:11px; border-bottom:1px solid var(--line);}
+  .destino-aerolinea-search-item:last-child{border-bottom:none;}
+  .destino-aerolinea-list{padding:6px 10px 10px;}
+  .destino-aerolinea-continente{font-size:10px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); font-weight:600; margin:10px 0 2px;}
+  .destino-aerolinea-continente:first-child{margin-top:2px;}
+  .destino-aerolinea-pais{font-size:10.5px; font-weight:600; color:var(--navy2); margin:6px 0 2px;}
+  .destino-aerolinea-item{display:flex; align-items:center; justify-content:space-between; gap:6px; font-size:11.5px; padding:3px 0; border-bottom:1px solid #EFEBDF;}
+  .destino-aerolinea-item:last-child{border-bottom:none;}
+  .destino-aerolinea-remove{background:none; border:none; color:var(--coral); font-size:14px; cursor:pointer; line-height:1; padding:2px 4px;}
+  .destino-aerolinea-remove:hover{background:#F0C7BC; border-radius:4px;}
+  .destino-aerolinea-remove:disabled{opacity:.4; cursor:not-allowed;}
   .chip{font-size:9px; font-family:ui-monospace,monospace; background:var(--navy); color:var(--sky); padding:2px 6px; border-radius:4px;}
   .chip.role-ceo{background:#5C2A8C;}
   .chip.role-vendedor{background:var(--amberDark);}
@@ -248,13 +308,15 @@
     .filter-group{padding:4px 6px 4px 8px;}
 
     /* .client-grid: cada fila de cliente/aeropuerto dentro de un país.
-       Siempre son los mismos 5 elementos en el mismo orden (nombre,
-       3 números, acciones — ver renderClientsListHtml /
+       Siempre son los mismos elementos en el mismo orden (nombre,
+       5 números —Mkt Ton/Cathay Ton/MS%/Mkt Rate/Cathay Rate, sumadas
+       las 2 de tarifa el 16 sep—, acciones — ver renderClientsListHtml /
        renderAirportsListHtml / detailHeaderRow), así que se puede
        reacomodar por posición sin tocar el HTML/JS que la genera: el
-       nombre pasa a ocupar toda la fila de arriba, los 3 números
-       quedan en una fila de 3 columnas iguales debajo, y las acciones
-       (Detail / +Add task) en su propia fila al final. */
+       nombre pasa a ocupar toda la fila de arriba, los 5 números quedan
+       en filas de 3 columnas iguales debajo (la última queda con 2 y un
+       hueco, se ve bien igual), y las acciones (Detail / +Add task) en
+       su propia fila al final. */
     .client-grid{grid-template-columns:repeat(3,1fr); row-gap:3px; padding:8px 0;}
     .client-grid > *:first-child{grid-column:1/-1; font-size:12.5px;}
     .client-grid > *:last-child{grid-column:1/-1;}
@@ -326,8 +388,8 @@
           <span></span><span></span><span></span>
         </button>
         <div class="brand-df">
-          <span class="brand-df-icon">&#10688;</span>
           <span class="brand-df-text">DATAFORCE</span>
+          <span class="brand-df-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></span>
         </div>
       </div>
       <div class="brand-title-center">Market Data</div>
@@ -358,7 +420,7 @@
 </div>
 
 <script id="app-script">
-const API = "https://dataforce-marketdata-git-911713216717.us-east1.run.app";
+const API = "";
 
 // Nombre de la aerolínea que representan estos datos — se usa en los
 // títulos en vez de la palabra genérica "propio" (ej. "Market share
@@ -501,7 +563,11 @@ const state = {
   dateFrom: "", dateTo: "",
   months: [],
   search: "",
-  sortKey: "cust_w", sortDir: "desc",
+  // Pedido del 16 sep: la tabla de países del Reporte de ventas debe
+  // ordenarse por defecto por Mkt Ton (mercado total), no por Cathay Ton
+  // (la columna propia) — antes se abría ordenada por la columna propia,
+  // que no es el orden que se quiere ver de entrada.
+  sortKey: "mkt_w", sortDir: "desc",
   expandedCountry: null, selectedCountry: null,
   // al hacer clic en un aeropuerto se expande igual que un país — con
   // flechita — mostrando los CLIENTES de ese aeropuerto. expandedAirport
@@ -593,6 +659,14 @@ const state = {
   clienteViewList: [], clienteViewSelected: "", clienteViewDestinos: [], clienteViewPeriodo: "ytd",
   clienteViewDateFrom: "", clienteViewDateTo: "",
   clienteViewData: null, clienteViewDestinos: [], clienteViewLoading: false,
+  // pestaña "Airline Destinations" (admin, pedido de Sharon 16 sep): un
+  // set de destinos por aerolínea (destinosAerolineaData[codigo] = grupos
+  // continente->país->aeropuertos ya cargados de /api/admin/destino-relevancia),
+  // más el texto de búsqueda y resultados de "agregar destino" por
+  // aerolínea (una búsqueda a la vez por columna, cada una con su propio
+  // estado para no pisarse entre sí).
+  destinosAerolineaData: {}, destinosAerolineaLoading: false,
+  destinosAerolineaSearch: {}, destinosAerolineaSearchResults: {}, destinosAerolineaBusy: {},
 };
 
 // Los países de origen calculados en vivo (source_geo_summary, ver Data
@@ -852,7 +926,12 @@ function canAssignTasksToOthers(){ return isAdmin() || isCeo() || isManager(); }
 
 const TABS = [
   { id: "global", label: "Global View", show: () => true },
-  { id: "comparativo", label: "Comparison", show: () => true },
+  // Pedido de Sharon (16 sep): dejar la pestaña oculta por ahora
+  // (no eliminada — sigue funcionando si se entra a mano cambiando
+  // state.tab, y todo su filtro/estado sigue vivo, comparte tabFilters con
+  // las demás — solo no aparece en la barra de pestañas). Volver a
+  // `() => true` cuando esté lista para mostrarse de nuevo.
+  { id: "comparativo", label: "Comparison", show: () => false },
   { id: "reporte", label: "Sales Report", show: () => true },
   // también sigue a LBL_CLIENT (ver comentario junto a esa variable) — con
   // Isidora activa pasa a decir "Shipper View".
@@ -868,6 +947,7 @@ const TABS = [
   // solo CEO/admin (ver loadDataSourcesUI/updateDataSourceSwitcherVisibility).
   { id: "fuentes", label: "Data Sources", show: () => true },
   { id: "permisos", label: "Permissions", show: () => isAdmin() },
+  { id: "destinosAerolinea", label: "Airline Destinations", show: () => isAdmin() },
   { id: "proximamente", label: "AI Assistant", show: () => true, soon: true },
 ];
 
@@ -948,6 +1028,11 @@ async function setTab(t){
   } else if (t === 'cumplimiento') {
     renderMain();
     await loadComplianceData();
+    renderMain();
+    return;
+  } else if (t === 'destinosAerolinea' && isAdmin()) {
+    renderMain();
+    await loadDestinosAerolineaData();
     renderMain();
     return;
   }
@@ -1323,7 +1408,7 @@ function resetReportFilterState(){
   state.dateFrom = ""; state.dateTo = "";
   state.expandedCountry = null;
   state.expandedAirport = null;
-  state.sortKey = "cust_w"; state.sortDir = "desc";
+  state.sortKey = "mkt_w"; state.sortDir = "desc"; // ver mismo comentario en el 'state' inicial, más arriba
   const ecsReset = effContinentes('reporte');
   state.trendScope = { type: "global", label: ecsReset.length === 0 ? "Global" : ecsReset.join(" + ") };
 }
@@ -1560,13 +1645,16 @@ async function populateDestinationFilters(scope, paisCode){
     state.tabFilters[scope].airportOptionsForFilter = [];
     return;
   }
-  // En Reporte de ventas, si hay una aerolínea elegida en "Destinos
-  // <aerolínea>", el desplegable de aeropuerto de destino también se
-  // acota a esa aerolínea (mismo criterio que loadDetailContent/
-  // loadClients) — en el resto de las pestañas no existe ese filtro, así
-  // que este param queda vacío ahí.
+  // Si hay una aerolínea elegida en "Destinos <aerolínea>", el desplegable
+  // de aeropuerto de destino también se acota a esa aerolínea (mismo
+  // criterio que loadDetailContent/loadClients). 16 sep: antes esto solo
+  // corría en Reporte de ventas porque era la única pestaña con ese filtro;
+  // ahora que Vista Global y Comparativo también lo tienen (y las 4
+  // pestañas comparten el MISMO tabFilters.aerolineaDestino, ver
+  // makeTabFilters) aplica sin importar desde qué pestaña se abrió el
+  // desplegable de país/aeropuerto de Destino.
   const rf = state.tabFilters.reporte;
-  const extraParams = (scope === 'reporte' && rf.aerolineaDestino !== 'Todos')
+  const extraParams = (rf.aerolineaDestino !== 'Todos')
     ? new URLSearchParams({ aerolinea_destino: rf.aerolineaDestino }).toString()
     : undefined;
   state.tabFilters[scope].airportOptionsForFilter = await loadAirports(paisCode, extraParams);
@@ -2333,6 +2421,57 @@ async function removeManualOpportunity(id){
   renderMain();
 }
 
+// pestaña admin "Airline Destinations" (pedido de Sharon, 16 sep) — trae
+// los destinos actuales de las 6 aerolíneas en paralelo. Si
+// aerolineasDestinoOptions todavía no se cargó (por ejemplo si
+// /api/aerolineas-destino falló al boot), se reintenta acá antes de pedir
+// cada columna, para no mostrar la pestaña vacía sin explicación.
+// 16 sep ("porque carga tan lento esto"): antes esto disparaba 6
+// GET en paralelo (uno por aerolínea/columna); bajo el límite de 1
+// instancia/Cloud Run esas 6 llamadas no corrían realmente en paralelo, y
+// cada una hacía su propia consulta a la base de tareas — se sentía como
+// una carga lenta con las 6 columnas pegadas en "Loading…". Ahora es 1
+// sola llamada (ver /api/admin/destino-relevancia-todas /
+// destino_relevancia_todas en data_helpers.py).
+async function loadDestinosAerolineaData(){
+  if (!state.aerolineasDestinoOptions.length) await loadAerolineasDestino();
+  state.destinosAerolineaLoading = true;
+  try {
+    state.destinosAerolineaData = await api('/api/admin/destino-relevancia-todas');
+  } catch(e) {
+    state.destinosAerolineaData = {};
+  } finally {
+    state.destinosAerolineaLoading = false;
+  }
+}
+
+async function searchDestinosAerolinea(code, q){
+  state.destinosAerolineaSearch[code] = q;
+  if (!q.trim()) { state.destinosAerolineaSearchResults[code] = []; reRenderPreservingFocus(); return; }
+  try {
+    state.destinosAerolineaSearchResults[code] = await api('/api/admin/destino-relevancia/buscar?' + new URLSearchParams({ aerolinea: code, q }).toString());
+  } catch(e) { state.destinosAerolineaSearchResults[code] = []; }
+  reRenderPreservingFocus();
+}
+
+// agrega (relevante='Y') o quita (relevante='N') un aeropuerto como
+// destino de una aerolínea — usado tanto por el botón "+ Add" del
+// buscador como por el botón "×" de la lista de destinos actuales.
+async function setDestinoAerolinea(code, aeropuerto, relevante){
+  state.destinosAerolineaBusy[code] = true;
+  renderMain();
+  try {
+    await api('/api/admin/destino-relevancia', { method: 'POST', body: JSON.stringify({ aerolinea: code, aeropuerto, relevante }) });
+    state.destinosAerolineaData[code] = await api('/api/admin/destino-relevancia?' + new URLSearchParams({ aerolinea: code }).toString());
+    if (relevante === 'Y') { state.destinosAerolineaSearch[code] = ""; state.destinosAerolineaSearchResults[code] = []; }
+  } catch(e) {
+    alert('Could not save the change: ' + e.message);
+  } finally {
+    state.destinosAerolineaBusy[code] = false;
+    renderMain();
+  }
+}
+
 async function loadReportComments(){ state.reportComments = await api('/api/comments'); }
 async function loadUsersDirectory(){
   try { state.usersDirectory = await api('/api/users/directory'); } catch(e) { state.usersDirectory = []; }
@@ -2486,6 +2625,7 @@ function renderMain(){
   else if (state.tab === 'global') main.innerHTML = renderGlobal();
   else if (state.tab === 'cumplimiento') main.innerHTML = renderCumplimiento();
   else if (state.tab === 'fuentes') main.innerHTML = renderFuentes();
+  else if (state.tab === 'destinosAerolinea') main.innerHTML = renderDestinosAerolinea();
   else main.innerHTML = renderProximamente();
   renderDrawer();
   wireEvents();
@@ -2609,6 +2749,11 @@ async function loadGlobalData(){
   // a esta pestaña — sin esto el selector se veía pero no hacía nada.
   if (f.origenPais !== "Todos") params.set('origen_pais', f.origenPais);
   if (origenAeropuertoParam('global')) params.set('origen_aeropuerto', origenAeropuertoParam('global'));
+  // "Destinos <aerolínea>" (pedido del 16 sep): mismo filtro
+  // compartido que ya usa Reporte de ventas (state.tabFilters.global.
+  // aerolineaDestino apunta al MISMO objeto que .reporte, ver makeTabFilters
+  // más arriba) — acá solo faltaba mandarlo al backend.
+  if (f.aerolineaDestino !== "Todos") params.set('aerolinea_destino', f.aerolineaDestino);
   try {
     state.globalCountries = await api('/api/countries?' + params.toString());
   } catch (e) {
@@ -2663,6 +2808,10 @@ async function loadComparativo(){
   if (aeropuertoParam('comparativo')) qs.set('aeropuerto', aeropuertoParam('comparativo'));
   if (f.origenPais !== "Todos") qs.set('origen_pais', f.origenPais);
   if (origenAeropuertoParam('comparativo')) qs.set('origen_aeropuerto', origenAeropuertoParam('comparativo'));
+  // "Destinos <aerolínea>" (pedido del 16 sep) — mismo filtro
+  // compartido que ya usa Reporte de ventas (ver comentario igual en
+  // loadGlobalData).
+  if (f.aerolineaDestino !== "Todos") qs.set('aerolinea_destino', f.aerolineaDestino);
   try {
     state.comparativoData = await api('/api/comparativo?' + qs.toString());
     const d = state.comparativoData;
@@ -2673,6 +2822,7 @@ async function loadComparativo(){
       if (aeropuertoParam('comparativo')) p.set('aeropuerto', aeropuertoParam('comparativo'));
       if (f.origenPais !== "Todos") p.set('origen_pais', f.origenPais);
       if (origenAeropuertoParam('comparativo')) p.set('origen_aeropuerto', origenAeropuertoParam('comparativo'));
+      if (f.aerolineaDestino !== "Todos") p.set('aerolinea_destino', f.aerolineaDestino);
       return p;
     };
     // dos series independientes (una por período) para el gráfico de barras
@@ -3000,6 +3150,7 @@ function renderComparativo(){
   return `
   <div class="filters">
     ${renderOrigenFilterBar('comparativo')}
+    ${renderAerolineaDestinoFilterGroup('comparativo')}
     ${renderDestinoFilterBar('comparativo')}
     <div class="filter-group">
       <span class="filter-group-label">Compare</span>
@@ -3105,6 +3256,9 @@ async function loadClienteViewData(){
   if (paisParam('cliente')) params.set('pais', paisParam('cliente'));
   if (cf.origenPais !== "Todos") params.set('origen_pais', cf.origenPais);
   if (origenAeropuertoParam('cliente')) params.set('origen_aeropuerto', origenAeropuertoParam('cliente'));
+  // "Destinos <aerolínea>" en Client View (pedido del 16 sep) — mismo
+  // patrón que Vista Global/Comparativo (ver comentario en loadGlobalData).
+  if (cf.aerolineaDestino !== "Todos") params.set('aerolinea_destino', cf.aerolineaDestino);
   // AÑO SOLO TIENE YTD Y FULL HISTORY" — mismo selector de período (y
   // mismo helper windowsFor) que ya usa el Reporte de ventas, en vez de
   // solo YTD/histórico completo. Antes esto NUNCA se mandaba al backend —
@@ -3138,6 +3292,7 @@ function renderClienteView(){
   return `
   <div class="filters">
     ${renderOrigenFilterBar('cliente')}
+    ${renderAerolineaDestinoFilterGroup('cliente')}
     <div class="filter-group">
       <span class="filter-group-label">Destination</span>
       ${renderContinentMultiSelectPanel('cliente', 'Cliente')}
@@ -3329,6 +3484,7 @@ function renderGlobal(){
   return `
   <div class="filters">
     ${renderOrigenFilterBar('global')}
+    ${renderAerolineaDestinoFilterGroup('global')}
     ${renderDestinoFilterBar('global')}
     <button class="btn" id="clearFiltersGlobalBtn" style="margin-left:auto;">Clear filters</button>
   </div>
@@ -3757,24 +3913,30 @@ function renderReporte(){
           <thead>
             <tr>
               <th style="text-align:left;">Country</th>
-              <th data-sort="mkt_w">${LBL_MKT_TON}${sortArrow('mkt_w')}</th>
-              <th data-sort="cust_w">${LBL_CX_TON}${sortArrow('cust_w')}</th>
-              <th data-sort="market_share_pct">${LBL_MS}${sortArrow('market_share_pct')}</th>
-              <th data-sort="tarifa_mercado">${LBL_MKT_RATE}${sortArrow('tarifa_mercado')}</th>
-              <th data-sort="tarifa_propia">${LBL_CX_RATE}${sortArrow('tarifa_propia')}</th>
+              <th data-sort="mkt_w" style="text-align:center;">${LBL_MKT_TON}${sortArrow('mkt_w')}</th>
+              <th data-sort="cust_w" style="text-align:center;">${LBL_CX_TON}${sortArrow('cust_w')}</th>
+              <th data-sort="market_share_pct" style="text-align:center;">${LBL_MS}${sortArrow('market_share_pct')}</th>
+              <th data-sort="tarifa_mercado" style="text-align:center;">${LBL_MKT_RATE}${sortArrow('tarifa_mercado')}</th>
+              <th data-sort="tarifa_propia" style="text-align:center;">${LBL_CX_RATE}${sortArrow('tarifa_propia')}</th>
+              <!-- 16 sep: columna propia para "+ Add task" — antes vivía pegada
+                   al nombre del país (primera celda), lo que la corría de lugar
+                   según lo largo del nombre; ahora queda al final, alineada con
+                   el resto de los "+ Add task" del reporte (Top clients, etc.) -->
+              <th style="text-align:center;cursor:default;">&nbsp;</th>
             </tr>
           </thead>
           <tbody id="countryTableBody">
-            ${rows.length === 0 ? `<tr><td colspan="6" class="empty">No data for this filter.</td></tr>` : rows.map(r => `
+            ${rows.length === 0 ? `<tr><td colspan="7" class="empty">No data for this filter.</td></tr>` : rows.map(r => `
               <tr class="row ${state.trendScope.type==='pais' && state.trendScope.code===r.Des_Country_Code ?'selected':''}" data-code="${r.Des_Country_Code}">
-                <td><span>${state.expandedCountry===r.Des_Country_Code?'&#9660;':'&#9654;'}</span> <span class="country-name">${esc(r.Des_Country)}</span>${canAssignTasks() ? `<button class="btn btn-sm" style="margin-left:8px;" data-quick-add-task-country="${esc(r.Des_Country_Code)}" data-pais-name="${esc(r.Des_Country)}" title="Add a task for all of ${esc(r.Des_Country)} (every airport/client), without opening a specific one">+ Add task</button>` : ''}</td>
-                <td class="num">${fmtTon(r.mkt_w)}</td>
-                <td class="num" style="font-weight:500;">${fmtTon(r.cust_w)}</td>
-                <td class="num" style="color:${r.market_share_pct>=20?'var(--teal)':r.market_share_pct>=8?'var(--amberDark)':'var(--coral)'};font-weight:500;">${fmtPct(r.market_share_pct)}</td>
-                <td class="num">${fmtRate(r.tarifa_mercado)}</td>
-                <td class="num">${fmtRate(r.tarifa_propia)}</td>
+                <td><span>${state.expandedCountry===r.Des_Country_Code?'&#9660;':'&#9654;'}</span> <span class="country-name">${esc(r.Des_Country)}</span></td>
+                <td class="num" style="text-align:center;">${fmtTon(r.mkt_w)}</td>
+                <td class="num" style="text-align:center;font-weight:500;">${fmtTon(r.cust_w)}</td>
+                <td class="num" style="text-align:center;color:${r.market_share_pct>=20?'var(--teal)':r.market_share_pct>=8?'var(--amberDark)':'var(--coral)'};font-weight:500;">${fmtPct(r.market_share_pct)}</td>
+                <td class="num" style="text-align:center;">${fmtRate(r.tarifa_mercado)}</td>
+                <td class="num" style="text-align:center;">${fmtRate(r.tarifa_propia)}</td>
+                <td class="num" style="text-align:center;">${canAssignTasks() ? `<button class="btn btn-sm" data-quick-add-task-country="${esc(r.Des_Country_Code)}" data-pais-name="${esc(r.Des_Country)}" title="Add a task for all of ${esc(r.Des_Country)} (every airport/client), without opening a specific one">+ Add task</button>` : ''}</td>
               </tr>
-              ${state.expandedCountry===r.Des_Country_Code ? `<tr><td colspan="6" style="padding:0;"><div class="expand-wrap" id="detailWrap-${r.Des_Country_Code}"><div class="loading">Loading…</div></div></td></tr>` : ''}
+              ${state.expandedCountry===r.Des_Country_Code ? `<tr><td colspan="7" style="padding:0;"><div class="expand-wrap" id="detailWrap-${r.Des_Country_Code}"><div class="loading">Loading…</div></div></td></tr>` : ''}
             `).join('')}
           </tbody>
         </table>
@@ -4752,6 +4914,71 @@ function accessSummary(aerolineasPermitidas, fuentesPermitidas){
   return `${aTxt} · ${fTxt}`;
 }
 
+// pestaña admin "Airline Destinations" (pedido de Sharon, 16 sep):
+// una columna por aerolínea (las 6 de siempre, mismas que "Destinos
+// <aerolínea>" en Sales Report/Global View/Client View — ver
+// aerolineasDestinoOptions), cada una con su propio buscador para agregar
+// un aeropuerto nuevo y la lista actual (agrupada continente -> país) con
+// un botón "×" para quitarlo. Los cambios se guardan en MySQL (ver
+// tasks_db.py / data_helpers.py) y quedan visibles de inmediato en el
+// filtro "Destinos <aerolínea>" de las demás pestañas.
+function renderDestinosAerolinea(){
+  if (!isAdmin()) return `<div class="empty">Only an admin can view this section.</div>`;
+  const opciones = state.aerolineasDestinoOptions || [];
+  return `
+  <div class="panel">
+    <div class="panel-head">Airline Destinations</div>
+    <div class="panel-body" style="padding:16px;max-height:none;overflow-y:visible;">
+      <div class="hint" style="margin-bottom:14px;">These are the destinations behind the "Destinations &lt;airline&gt;" filter in Sales Report, Global View and ${esc(LBL_CLIENT)} View. Search to add an airport, or remove one with the × button — changes apply right away.</div>
+      ${!opciones.length ? `<div class="loading">${state.destinosAerolineaLoading ? 'Loading…' : 'No airlines available.'}</div>` : `
+      <div class="destino-aerolinea-grid">
+        ${opciones.map(a => renderDestinosAerolineaColumn(a)).join('')}
+      </div>`}
+    </div>
+  </div>`;
+}
+
+function renderDestinosAerolineaColumn(a){
+  const code = a.code;
+  const info = state.destinosAerolineaData[code];
+  const q = state.destinosAerolineaSearch[code] || "";
+  const results = state.destinosAerolineaSearchResults[code] || [];
+  const busy = !!state.destinosAerolineaBusy[code];
+  const total = info ? info.grupos.reduce((s, c) => s + c.paises.reduce((s2, p) => s2 + p.aeropuertos.length, 0), 0) : 0;
+  return `
+  <div class="destino-aerolinea-col">
+    <div class="destino-aerolinea-col-head">${esc(a.label)} <span class="hint">(${total})</span></div>
+    <div class="destino-aerolinea-search">
+      <input type="text" id="destinoSearch-${esc(code)}" class="form-input" placeholder="Add airport (code, city, country)…" data-destino-search="${esc(code)}" value="${esc(q)}" style="font-size:11.5px;padding:5px 8px;" ${busy ? 'disabled' : ''}>
+      ${q ? `
+        <div class="destino-aerolinea-search-results">
+          ${results.length ? results.map(r => `
+            <div class="destino-aerolinea-search-item">
+              <span>${esc(r.codigo)} — ${esc(r.nombre)} <span class="hint">(${esc(r.pais)})</span></span>
+              <button class="btn btn-sm" data-destino-add="${esc(code)}|${esc(r.codigo)}" ${busy ? 'disabled' : ''}>+ Add</button>
+            </div>
+          `).join('') : `<div class="hint" style="padding:6px 8px;">No matching airports.</div>`}
+        </div>` : ''}
+    </div>
+    <div class="destino-aerolinea-list">
+      ${!info ? `<div class="hint">Loading…</div>` :
+        !info.grupos.length ? `<div class="hint">No destinations yet.</div>` :
+        info.grupos.map(cont => `
+          <div class="destino-aerolinea-continente">${esc(cont.continente)}</div>
+          ${cont.paises.map(p => `
+            <div class="destino-aerolinea-pais">${esc(p.pais)}</div>
+            ${p.aeropuertos.map(ap => `
+              <div class="destino-aerolinea-item">
+                <span>${esc(ap.codigo)} <span class="hint">${esc(ap.nombre)}</span></span>
+                <button class="destino-aerolinea-remove" data-destino-remove="${esc(code)}|${esc(ap.codigo)}" ${busy ? 'disabled' : ''} title="Remove destination">&times;</button>
+              </div>
+            `).join('')}
+          `).join('')}
+        `).join('')}
+    </div>
+  </div>`;
+}
+
 function renderPermisos(){
   if (!isAdmin()) return `<div class="empty">Only an admin can view this section.</div>`;
   const allAirlines = state.allAirlines || [];
@@ -5244,12 +5471,18 @@ async function selectTrendAirport(code, city){
 // país, aeropuertos de un país, clientes de UN aeropuerto) — mismo formato
 // de columnas en las tres.
 function detailHeaderRow(col1){
+  // LBL_MKT_RATE/LBL_CX_RATE (pedido del 16 sep): estas dos listas
+  // (clientes y aeropuertos de un país) ahora muestran tarifa igual que la
+  // tabla "By country" de arriba — ver aggregate_by_client/aggregate_by_airport
+  // en data_helpers.py, que ya calculan tarifa_mercado/tarifa_propia.
   return `
     <div class="client-grid" style="cursor:default;border-bottom:2px solid var(--line);padding-bottom:4px;">
       <span style="font-size:10px;text-transform:uppercase;color:var(--muted);font-weight:600;">${col1}</span>
       <span class="num" style="font-size:10px;text-transform:uppercase;font-weight:600;">${LBL_MKT_TON}</span>
       <span class="num" style="font-size:10px;text-transform:uppercase;font-weight:600;">${LBL_CX_TON}</span>
       <span class="num" style="font-size:10px;text-transform:uppercase;font-weight:600;">${LBL_MS}</span>
+      <span class="num" style="font-size:10px;text-transform:uppercase;font-weight:600;">${LBL_MKT_RATE}</span>
+      <span class="num" style="font-size:10px;text-transform:uppercase;font-weight:600;">${LBL_CX_RATE}</span>
       <span></span>
     </div>`;
 }
@@ -5274,7 +5507,7 @@ function renderClientsListHtml(code, name){
       const isOpen = state.expandedClient === c.FF_Head_Name;
       const wrapId = 'clientAirportWrap-' + esc(code) + '-' + esc(encodeURIComponent(c.FF_Head_Name));
       return `<div class="client-grid" data-toggle-client="${esc(c.FF_Head_Name)}" data-pais-code="${code}" data-pais-name="${esc(name)}">
-        <span>${isOpen?'&#9660;':'&#9654;'} ${esc(c.FF_Head_Name)}</span><span class="num">${fmtTon(c.mkt_w)}</span><span class="num b">${fmtTon(c.cust_w)}</span><span class="num">${fmtPct(c.market_share_pct)}</span>
+        <span>${isOpen?'&#9660;':'&#9654;'} ${esc(c.FF_Head_Name)}</span><span class="num">${fmtTon(c.mkt_w)}</span><span class="num b">${fmtTon(c.cust_w)}</span><span class="num">${fmtPct(c.market_share_pct)}</span><span class="num">${fmtRate(c.tarifa_mercado)}</span><span class="num">${fmtRate(c.tarifa_propia)}</span>
         <span class="row-actions">
           <button class="btn btn-sm" data-open-detail-client="${esc(c.FF_Head_Name)}" data-pais-code="${code}" data-pais-name="${esc(name)}">Detail</button>
           ${canAssignTasks() ? `<button class="btn btn-sm" data-quick-add-task-client="${esc(c.FF_Head_Name)}" data-pais-code="${code}" data-pais-name="${esc(name)}" title="Add a task for this ${esc(LBL_CLIENT.toLowerCase())} without opening the detail">+ Add task</button>` : ''}
@@ -5290,8 +5523,10 @@ function renderAirportsListHtml(code, name){
     (airports.length === 0 ? `<div class="empty" style="padding:14px 0;">No airports for this country for the chosen period.</div>` : airports.map(a => {
       const isOpen = state.expandedAirport === a.Des_Code;
       return `<div class="client-grid" data-toggle-airport="${esc(a.Des_Code)}" data-airport-city="${esc(a.Des_City)}" data-pais-code="${code}" data-pais-name="${esc(name)}">
-        <span>${isOpen?'&#9660;':'&#9654;'} ${esc(a.Des_Code)} <span style="color:var(--muted);">· ${esc(a.Des_City)}</span></span><span class="num">${fmtTon(a.mkt_w)}</span><span class="num b">${fmtTon(a.cust_w)}</span><span class="num">${fmtPct(a.market_share_pct)}</span>
+        <span>${isOpen?'&#9660;':'&#9654;'} ${esc(a.Des_Code)} <span style="color:var(--muted);">· ${esc(a.Des_City)}</span></span><span class="num">${fmtTon(a.mkt_w)}</span><span class="num b">${fmtTon(a.cust_w)}</span><span class="num">${fmtPct(a.market_share_pct)}</span><span class="num">${fmtRate(a.tarifa_mercado)}</span><span class="num">${fmtRate(a.tarifa_propia)}</span>
+        <span class="row-actions">
         <button class="btn btn-sm" data-open-detail-airport="${esc(a.Des_Code)}" data-airport-city="${esc(a.Des_City)}" data-pais-name="${esc(name)}">Detail</button>
+        </span>
       </div>` + (isOpen ? `<div class="expand-wrap" style="margin-left:16px;border-left:2px solid var(--line);background:#F5F2E9;" id="airportClientWrap-${esc(code)}-${esc(a.Des_Code)}"><div class="loading">Loading…</div></div>` : '');
     }).join(''));
 }
@@ -5412,7 +5647,7 @@ async function loadAirportClientsContent(countryCode, countryName, airportCode, 
   const html = `<div class="expand-title"><span>${esc(LBL_CLIENT)}s at ${esc(airportCode)} · ${esc(airportCity)} (sorted by market tons) — "Detail" opens the full detail</span></div>` +
     detailHeaderRow(esc(LBL_CLIENT)) +
     (clients.length === 0 ? `<div class="empty" style="padding:10px 0;">No ${esc(LBL_CLIENT.toLowerCase())} registered at this airport for the chosen period.</div>` : clients.map(c => `<div class="client-grid" data-select-client="${esc(c.FF_Head_Name)}" data-pais-code="${countryCode}" data-pais-name="${esc(countryName)}">
-      <span>${esc(c.FF_Head_Name)}</span><span class="num">${fmtTon(c.mkt_w)}</span><span class="num b">${fmtTon(c.cust_w)}</span><span class="num">${fmtPct(c.market_share_pct)}</span>
+      <span>${esc(c.FF_Head_Name)}</span><span class="num">${fmtTon(c.mkt_w)}</span><span class="num b">${fmtTon(c.cust_w)}</span><span class="num">${fmtPct(c.market_share_pct)}</span><span class="num">${fmtRate(c.tarifa_mercado)}</span><span class="num">${fmtRate(c.tarifa_propia)}</span>
       <span class="row-actions">
         <button class="btn btn-sm" data-open-detail-client="${esc(c.FF_Head_Name)}" data-pais-code="${countryCode}" data-pais-name="${esc(countryName)}">Detail</button>
         ${canAssignTasks() ? `<button class="btn btn-sm" data-quick-add-task-client="${esc(c.FF_Head_Name)}" data-pais-code="${countryCode}" data-pais-name="${esc(countryName)}" data-airport-code="${esc(airportCode)}" data-airport-city="${esc(airportCity)}" title="Add a task for this ${esc(LBL_CLIENT.toLowerCase())} without opening the detail">+ Add task</button>` : ''}
@@ -5476,7 +5711,7 @@ async function loadClientAirportsContent(countryCode, countryName, clienteNombre
   const html = `<div class="expand-title"><span>Airports used by ${esc(clienteNombre)} (sorted by market tons) — "Detail" opens the full detail</span></div>` +
     detailHeaderRow('Airport') +
     (airports.length === 0 ? `<div class="empty" style="padding:10px 0;">No airports registered for this ${esc(LBL_CLIENT.toLowerCase())} for the chosen period.</div>` : airports.map(a => `<div class="client-grid" data-pais-code="${countryCode}" data-pais-name="${esc(countryName)}">
-      <span>${esc(a.Des_Code)} <span style="color:var(--muted);">· ${esc(a.Des_City)}</span></span><span class="num">${fmtTon(a.mkt_w)}</span><span class="num b">${fmtTon(a.cust_w)}</span><span class="num">${fmtPct(a.market_share_pct)}</span>
+      <span>${esc(a.Des_Code)} <span style="color:var(--muted);">· ${esc(a.Des_City)}</span></span><span class="num">${fmtTon(a.mkt_w)}</span><span class="num b">${fmtTon(a.cust_w)}</span><span class="num">${fmtPct(a.market_share_pct)}</span><span class="num">${fmtRate(a.tarifa_mercado)}</span><span class="num">${fmtRate(a.tarifa_propia)}</span>
       <span class="row-actions">
         <button class="btn btn-sm" data-open-detail-airport="${esc(a.Des_Code)}" data-airport-city="${esc(a.Des_City)}" data-pais-name="${esc(countryName)}">Detail</button>
         ${canAssignTasks() ? `<button class="btn btn-sm" data-quick-add-task-client="${esc(clienteNombre)}" data-pais-code="${countryCode}" data-pais-name="${esc(countryName)}" data-airport-code="${esc(a.Des_Code)}" data-airport-city="${esc(a.Des_City)}" title="Add a task for this ${esc(LBL_CLIENT.toLowerCase())} at ${esc(a.Des_Code)} without opening the detail">+ Add task</button>` : ''}
@@ -6002,6 +6237,17 @@ function wireEvents(){
   } else if (state.tab === 'global') {
     wireOrigenFilterBar('global', async () => { await loadGlobalData(); renderMain(); });
     wireDestinoFilterBar('global', async () => { await loadGlobalData(); renderMain(); });
+    // "Destinos <aerolínea>" (pedido del 16 sep) — mismo select que en
+    // Reporte de ventas (ver wireEvents scope 'reporte'), ahora también en
+    // Vista Global. state.tabFilters.global.aerolineaDestino ya apuntaba al
+    // mismo objeto compartido que .reporte (ver makeTabFilters); acá solo
+    // faltaba el <select> en el HTML (ver renderGlobal) y este wiring.
+    const aerolineaDestinoGlobalSel = document.getElementById('aerolineaDestinoSelect_global');
+    if (aerolineaDestinoGlobalSel) aerolineaDestinoGlobalSel.onchange = async (e) => {
+      state.tabFilters.global.aerolineaDestino = e.target.value;
+      await loadGlobalData();
+      renderMain();
+    };
     document.querySelectorAll('[data-global-level]').forEach(btn => btn.onclick = () => { state.globalLevel = btn.dataset.globalLevel; renderMain(); });
     document.querySelectorAll('[data-global-mode]').forEach(btn => btn.onclick = () => {
       state.globalViewMode = btn.dataset.globalMode;
@@ -6018,6 +6264,13 @@ function wireEvents(){
     if (clearGlobalBtn) clearGlobalBtn.onclick = () => clearScopeFilters('global', loadGlobalData, () => { state.globalPeriod = 'ytd'; state.globalLevel = 'continente'; });
   } else if (state.tab === 'cliente') {
     wireOrigenFilterBar('cliente', loadClienteViewData);
+    // "Destinos <aerolínea>" en Client View (pedido del 16 sep) — mismo
+    // patrón que Vista Global/Comparativo (ver wireEvents scope 'global').
+    const aerolineaDestinoClienteSel = document.getElementById('aerolineaDestinoSelect_cliente');
+    if (aerolineaDestinoClienteSel) aerolineaDestinoClienteSel.onchange = async (e) => {
+      state.tabFilters.cliente.aerolineaDestino = e.target.value;
+      await loadClienteViewData();
+    };
     wireTypeaheadFilter('clienteViewInput', () => state.clienteViewList, s => s,
       async (val) => { state.clienteViewSelected = val; await loadClienteViewData(); },
       async () => { state.clienteViewSelected = ''; await loadClienteViewData(); });
@@ -6041,6 +6294,13 @@ function wireEvents(){
   } else if (state.tab === 'comparativo') {
     wireOrigenFilterBar('comparativo', loadComparativo);
     wireDestinoFilterBar('comparativo', loadComparativo);
+    // "Destinos <aerolínea>" en Comparativo (pedido del 16 sep) — mismo
+    // patrón que en Vista Global (ver comentario arriba).
+    const aerolineaDestinoCompSel = document.getElementById('aerolineaDestinoSelect_comparativo');
+    if (aerolineaDestinoCompSel) aerolineaDestinoCompSel.onchange = async (e) => {
+      state.tabFilters.comparativo.aerolineaDestino = e.target.value;
+      await loadComparativo();
+    };
     const compSel = document.getElementById('comparativoPeriodSelect');
     if (compSel) compSel.onchange = (e) => {
       state.comparativoPeriod = e.target.value;
@@ -6165,6 +6425,19 @@ function wireEvents(){
     });
     document.querySelectorAll('[data-compliance-access]').forEach(cb => cb.onchange = (e) => {
       toggleComplianceAccess(cb.dataset.complianceAccess, e.target.checked);
+    });
+  } else if (state.tab === 'destinosAerolinea') {
+    document.querySelectorAll('[data-destino-search]').forEach(inp => inp.oninput = (e) => {
+      searchDestinosAerolinea(inp.dataset.destinoSearch, e.target.value);
+    });
+    document.querySelectorAll('[data-destino-add]').forEach(btn => btn.onclick = () => {
+      const [code, aeropuerto] = btn.dataset.destinoAdd.split('|');
+      setDestinoAerolinea(code, aeropuerto, 'Y');
+    });
+    document.querySelectorAll('[data-destino-remove]').forEach(btn => btn.onclick = () => {
+      const [code, aeropuerto] = btn.dataset.destinoRemove.split('|');
+      if (!confirm(`Remove ${aeropuerto} as a destination?`)) return;
+      setDestinoAerolinea(code, aeropuerto, 'N');
     });
   }
 }
